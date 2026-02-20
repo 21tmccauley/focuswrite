@@ -106,8 +106,8 @@ export default function MonitorTable() {
         {filteredSessions.map((session) => (
           <TableRow key={session.id}>
             <TableCell>
-              {assignmentMap[session.assignmentId]?.promptText?.slice(0, 30) || session.assignmentId}
-              {assignmentMap[session.assignmentId]?.promptText?.length > 30 ? '…' : ''}
+              {assignmentMap[session.assignmentId]?.name || assignmentMap[session.assignmentId]?.promptText?.slice(0, 30) || session.assignmentId}
+              {(assignmentMap[session.assignmentId]?.name ? false : (assignmentMap[session.assignmentId]?.promptText?.length ?? 0) > 30) ? '…' : ''}
             </TableCell>
             <TableCell>{session.studentId}</TableCell>
             <TableCell>{session.studentName || '—'}</TableCell>

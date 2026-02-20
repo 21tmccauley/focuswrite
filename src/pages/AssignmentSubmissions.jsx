@@ -108,7 +108,7 @@ export default function AssignmentSubmissions() {
       {assignment && (
         <Card>
           <CardContent className="pt-6">
-            <h1 className="text-xl font-semibold">Assignment</h1>
+            <h1 className="text-xl font-semibold">{assignment.name || 'Assignment'}</h1>
             <p className="mt-2 text-sm text-muted-foreground">ID: {assignment.id}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <strong className="text-sm">Student link:</strong>

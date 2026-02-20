@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function CreateAssignment() {
   const { user } = useAuth()
+  const [name, setName] = useState('')
   const [promptText, setPromptText] = useState('')
   const [strikeLimit, setStrikeLimit] = useState(3)
   const [loading, setLoading] = useState(false)
@@ -31,12 +32,14 @@ export default function CreateAssignment() {
     try {
       await setDoc(doc(db, ASSIGNMENTS, assignmentId), {
         teacherId: user.uid,
+        name: (name || promptText.trim().slice(0, 80) || 'Untitled').trim(),
         promptText: promptText.trim(),
         strikeLimit: Number(strikeLimit) || 3,
         createdAt: serverTimestamp(),
         activeStatus: 'active',
       })
       setCreatedUrl(url)
+      setName('')
       setPromptText('')
     } catch (err) {
       setError(err.message || 'Failed to create assignment')
@@ -59,6 +62,17 @@ export default function CreateAssignment() {
   return (
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Assignment name</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Week 3 Essay, Final Draft"
+            className="max-w-[500px]"
+          />
+          <p className="text-muted-foreground text-sm">Optional. If left blank, the first part of the prompt is used.</p>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="prompt">Prompt</Label>
           <Textarea

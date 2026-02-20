@@ -98,8 +98,8 @@ export default function AssignmentList() {
         {sortedAssignments.map((assignment) => {
           const count = sessionsByAssignment[assignment.id] ?? 0
           const label =
-            assignment.promptText?.slice(0, 50) || assignment.id
-          const truncated = (assignment.promptText?.length ?? 0) > 50 ? label + '…' : label
+            assignment.name || assignment.promptText?.slice(0, 50) || assignment.id
+          const truncated = (assignment.name ? false : (assignment.promptText?.length ?? 0) > 50) ? label + '…' : label
           return (
             <TableRow key={assignment.id}>
               <TableCell className="font-medium">{truncated}</TableCell>
