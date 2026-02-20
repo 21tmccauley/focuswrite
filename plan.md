@@ -340,7 +340,6 @@ src/
     StrikeModal.jsx     # warning / “Count as strike”
     TeacherDashboard.jsx
     CreateAssignment.jsx
-    MonitorTable.jsx
   hooks/
     useAuth.js          # optional: auth state
     useSession.js       # optional: load/update session

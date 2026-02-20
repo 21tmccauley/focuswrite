@@ -35,6 +35,7 @@ function Write() {
 
   const [submitting, setSubmitting] = useState(false)
   const [submittingSession, setSubmittingSession] = useState(false)
+  const [autosaveError, setAutosaveError] = useState(null)
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false)
   const [strikeModalOpen, setStrikeModalOpen] = useState(false)
   const [pendingStrikeConfirmOpen, setPendingStrikeConfirmOpen] = useState(false)
@@ -151,7 +152,13 @@ function Write() {
         wordCount: wc,
         strikeCount: strikeCountRef.current,
         updatedAt: serverTimestamp(),
-      }).catch(() => {})
+      })
+        .then(() => {
+          setAutosaveError(null)
+        })
+        .catch(() => {
+          setAutosaveError((prev) => prev ?? 'Autosave is retrying. Keep writing and stay on this page.')
+        })
     }, 4000)
     return () => clearInterval(interval)
   }, [status, sessionId])
@@ -164,28 +171,25 @@ function Write() {
     setSubmitting(true)
     const normalizedStudentId = trimmed.replace(/\s+/g, '')
     const sid = assignmentId + '_' + normalizedStudentId
+    const sessionRef = doc(db, SESSIONS, sid)
     setSessionId(sid)
+    setStudentId(normalizedStudentId)
 
-    getDoc(doc(db, SESSIONS, sid))
-      .then((snap) => {
-        if (snap.exists()) {
-          const data = snap.data()
-          if (data.status === 'locked') {
-            setPhase('submitted')
-            return
-          }
-          if (data.status === 'active') {
-            setContent(data.content ?? '')
-            setStrikeCount(data.strikeCount ?? 0)
-            setStatus(data.status)
-            setPhase('writing')
-            requestFullscreen()
-            return
-          }
-        }
-        return setDoc(doc(db, SESSIONS, sid), {
+    updateDoc(sessionRef, {
+      updatedAt: serverTimestamp(),
+    })
+      .then(() => {
+        setContent('')
+        setStrikeCount(0)
+        setStatus('active')
+        setPhase('writing')
+        requestFullscreen()
+      })
+      .catch((err) => {
+        if (err?.code === 'not-found') {
+          return setDoc(sessionRef, {
           assignmentId,
-          studentId: trimmed,
+          studentId: normalizedStudentId,
           studentName: studentName.trim() || null,
           content: '',
           wordCount: 0,
@@ -200,8 +204,11 @@ function Write() {
           setPhase('writing')
           requestFullscreen()
         })
-      })
-      .catch((err) => {
+        }
+        if (err?.code === 'permission-denied') {
+          setPhase('submitted')
+          return
+        }
         setError(err.message || 'Failed to start session')
       })
       .finally(() => setSubmitting(false))
@@ -383,6 +390,11 @@ function Write() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {autosaveError && (
+            <Alert variant="destructive">
+              <AlertDescription>{autosaveError}</AlertDescription>
+            </Alert>
+          )}
           <h1 className="text-2xl font-semibold">Writing room</h1>
           <p className="text-muted-foreground">Assignment: {assignmentId}</p>
           {studentName.trim() ? (
@@ -410,6 +422,7 @@ function Write() {
             >
               Strikes: {strikeCount} / {strikeLimit}
             </span>
+            {!autosaveError && <span className="text-muted-foreground text-sm">Autosave every 4s</span>}
           </div>
 
           <Textarea

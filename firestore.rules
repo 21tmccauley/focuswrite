@@ -4,6 +4,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isTeacherForAssignment(assignmentId) {
+      return request.auth != null
+        && get(/databases/$(database)/documents/assignments/$(assignmentId)).data.teacherId == request.auth.uid;
+    }
 
     // Assignments: only the creating teacher can read/update/delete their own
     match /assignments/{assignmentId} {
@@ -13,11 +17,25 @@ service cloud.firestore {
 
     // Sessions: students create/update (unauthenticated); teachers read via dashboard
     match /sessions/{sessionId} {
-      allow read: if request.auth != null;
-      allow create: if request.resource.data.strikeCount == 0 && request.resource.data.status == 'active';
+      allow read: if isTeacherForAssignment(resource.data.assignmentId);
+      allow create: if request.resource.data.assignmentId is string
+        && request.resource.data.studentId is string
+        && request.resource.data.content is string
+        && request.resource.data.wordCount is number
+        && request.resource.data.strikeCount == 0
+        && request.resource.data.status == 'active'
+        && request.resource.data.assignmentId + '_' + request.resource.data.studentId == sessionId
+        && request.resource.data.content.size() <= 50000;
       allow update: if resource.data.status == 'active'
+        && request.resource.data.assignmentId == resource.data.assignmentId
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.content is string
+        && request.resource.data.wordCount is number
         && request.resource.data.strikeCount >= resource.data.strikeCount
-        && request.resource.data.content.size() >= resource.data.content.size();
+        && request.resource.data.content.size() >= resource.data.content.size()
+        && request.resource.data.content.size() <= 50000
+        && request.resource.data.status in ['active', 'locked'];
       allow delete: if false;
     }
   }

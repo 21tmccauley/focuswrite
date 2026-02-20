@@ -19,39 +19,85 @@ export default function AssignmentList() {
   const { user } = useAuth()
   const [assignments, setAssignments] = useState([])
   const [sessions, setSessions] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true)
+  const [sessionsLoading, setSessionsLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setAssignments([])
+      setAssignmentsLoading(false)
+      return
+    }
+    setAssignmentsLoading(true)
     const q = query(collection(db, ASSIGNMENTS), where('teacherId', '==', user.uid))
     const unsubAssignments = onSnapshot(
       q,
       (snap) => {
         setAssignments(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        setAssignmentsLoading(false)
       },
       (err) => {
         setError(err.message)
-        setLoading(false)
+        setAssignmentsLoading(false)
       }
     )
     return () => unsubAssignments()
   }, [user])
 
   useEffect(() => {
-    const unsubSessions = onSnapshot(
-      collection(db, SESSIONS),
-      (snap) => {
-        setSessions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-        setLoading(false)
-      },
-      (err) => {
-        setError(err.message)
-        setLoading(false)
-      }
+    if (assignmentsLoading) return
+    if (assignments.length === 0) {
+      setSessions([])
+      setSessionsLoading(false)
+      return
+    }
+
+    setSessionsLoading(true)
+    const assignmentIds = assignments.map((a) => a.id)
+    const chunkSize = 10
+    const idChunks = []
+    for (let i = 0; i < assignmentIds.length; i += chunkSize) {
+      idChunks.push(assignmentIds.slice(i, i + chunkSize))
+    }
+
+    const sessionsById = new Map()
+    const initializedChunkIndexes = new Set()
+
+    const unsubs = idChunks.map((chunk, chunkIndex) =>
+      onSnapshot(
+        query(collection(db, SESSIONS), where('assignmentId', 'in', chunk)),
+        (snap) => {
+          for (const [id, session] of sessionsById.entries()) {
+            if (chunk.includes(session.assignmentId)) {
+              sessionsById.delete(id)
+            }
+          }
+          snap.docs.forEach((d) => {
+            sessionsById.set(d.id, { id: d.id, ...d.data() })
+          })
+          setSessions(Array.from(sessionsById.values()))
+
+          if (!initializedChunkIndexes.has(chunkIndex)) {
+            initializedChunkIndexes.add(chunkIndex)
+            if (initializedChunkIndexes.size === idChunks.length) {
+              setSessionsLoading(false)
+            }
+          }
+        },
+        (err) => {
+          setError(err.message)
+          setSessionsLoading(false)
+        }
+      )
     )
-    return () => unsubSessions()
-  }, [])
+
+    return () => {
+      unsubs.forEach((unsub) => unsub())
+    }
+  }, [assignments, assignmentsLoading])
+
+  const loading = assignmentsLoading || sessionsLoading
 
   const assignmentIds = new Set(assignments.map((a) => a.id))
   const sessionsByAssignment = sessions
