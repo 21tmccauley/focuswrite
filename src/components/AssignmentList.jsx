@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { ASSIGNMENTS, SESSIONS } from '@/firebase-collections'
 import { useAuth } from '@/contexts/AuthContext'
@@ -22,6 +22,24 @@ export default function AssignmentList() {
   const [assignmentsLoading, setAssignmentsLoading] = useState(true)
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+
+  async function handleDeleteAssignment(assignmentId) {
+    const confirmed = window.confirm(
+      'Delete this assignment? Students will no longer be able to open the writing link.'
+    )
+    if (!confirmed) return
+
+    setError(null)
+    setDeletingId(assignmentId)
+    try {
+      await deleteDoc(doc(db, ASSIGNMENTS, assignmentId))
+    } catch (err) {
+      setError(err.message || 'Failed to delete assignment')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
     if (!user) {
@@ -46,56 +64,27 @@ export default function AssignmentList() {
   }, [user])
 
   useEffect(() => {
-    if (assignmentsLoading) return
-    if (assignments.length === 0) {
+    if (!user) {
       setSessions([])
       setSessionsLoading(false)
       return
     }
 
     setSessionsLoading(true)
-    const assignmentIds = assignments.map((a) => a.id)
-    const chunkSize = 10
-    const idChunks = []
-    for (let i = 0; i < assignmentIds.length; i += chunkSize) {
-      idChunks.push(assignmentIds.slice(i, i + chunkSize))
-    }
-
-    const sessionsById = new Map()
-    const initializedChunkIndexes = new Set()
-
-    const unsubs = idChunks.map((chunk, chunkIndex) =>
-      onSnapshot(
-        query(collection(db, SESSIONS), where('assignmentId', 'in', chunk)),
-        (snap) => {
-          for (const [id, session] of sessionsById.entries()) {
-            if (chunk.includes(session.assignmentId)) {
-              sessionsById.delete(id)
-            }
-          }
-          snap.docs.forEach((d) => {
-            sessionsById.set(d.id, { id: d.id, ...d.data() })
-          })
-          setSessions(Array.from(sessionsById.values()))
-
-          if (!initializedChunkIndexes.has(chunkIndex)) {
-            initializedChunkIndexes.add(chunkIndex)
-            if (initializedChunkIndexes.size === idChunks.length) {
-              setSessionsLoading(false)
-            }
-          }
-        },
-        (err) => {
-          setError(err.message)
-          setSessionsLoading(false)
-        }
-      )
+    const unsub = onSnapshot(
+      query(collection(db, SESSIONS), where('teacherId', '==', user.uid)),
+      (snap) => {
+        setSessions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        setSessionsLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setSessionsLoading(false)
+      }
     )
 
-    return () => {
-      unsubs.forEach((unsub) => unsub())
-    }
-  }, [assignments, assignmentsLoading])
+    return () => unsub()
+  }, [user])
 
   const loading = assignmentsLoading || sessionsLoading
 
@@ -137,7 +126,7 @@ export default function AssignmentList() {
         <TableRow>
           <TableHead>Assignment</TableHead>
           <TableHead>Submissions</TableHead>
-          <TableHead className="w-[140px]"></TableHead>
+          <TableHead className="w-[260px]"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -150,9 +139,20 @@ export default function AssignmentList() {
             <TableRow key={assignment.id}>
               <TableCell className="font-medium">{truncated}</TableCell>
               <TableCell>{count}</TableCell>
-              <TableCell>
-                <Button asChild variant="outline" size="sm">
-                  <Link to={`/dashboard/assignment/${assignment.id}`}>View submissions</Link>
+              <TableCell className="space-x-2">
+                <Button asChild variant="outline" size="sm" disabled={deletingId === assignment.id}>
+                  <Link to={`/dashboard/assignment/${assignment.id}`}>
+                    View submissions
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteAssignment(assignment.id)}
+                  disabled={deletingId === assignment.id}
+                >
+                  {deletingId === assignment.id ? 'Deleting...' : 'Delete'}
                 </Button>
               </TableCell>
             </TableRow>

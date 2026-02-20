@@ -69,15 +69,19 @@ export default function AssignmentSubmissions() {
   }, [assignmentId, user])
 
   useEffect(() => {
-    if (!assignmentId) return
+    if (!assignmentId || !user) return
     const q = query(
       collection(db, SESSIONS),
-      where('assignmentId', '==', assignmentId)
+      where('teacherId', '==', user.uid)
     )
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setSessions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        setSessions(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((session) => session.assignmentId === assignmentId)
+        )
         setLoading(false)
       },
       (err) => {
@@ -86,7 +90,7 @@ export default function AssignmentSubmissions() {
       }
     )
     return () => unsub()
-  }, [assignmentId])
+  }, [assignmentId, user])
 
   if (error && !assignment) {
     return (

@@ -4,9 +4,13 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function teacherIdForAssignment(assignmentId) {
+      return get(/databases/$(database)/documents/assignments/$(assignmentId)).data.teacherId;
+    }
+
     function isTeacherForAssignment(assignmentId) {
       return request.auth != null
-        && get(/databases/$(database)/documents/assignments/$(assignmentId)).data.teacherId == request.auth.uid;
+        && teacherIdForAssignment(assignmentId) == request.auth.uid;
     }
 
     // Assignments: only the creating teacher can read/update/delete their own
@@ -17,9 +21,13 @@ service cloud.firestore {
 
     // Sessions: students create/update (unauthenticated); teachers read via dashboard
     match /sessions/{sessionId} {
-      allow read: if isTeacherForAssignment(resource.data.assignmentId);
+      allow read: if request.auth != null
+        && resource.data.teacherId is string
+        && resource.data.teacherId == request.auth.uid;
       allow create: if request.resource.data.assignmentId is string
         && request.resource.data.studentId is string
+        && request.resource.data.teacherId is string
+        && request.resource.data.teacherId == teacherIdForAssignment(request.resource.data.assignmentId)
         && request.resource.data.content is string
         && request.resource.data.wordCount is number
         && request.resource.data.strikeCount == 0
@@ -29,6 +37,14 @@ service cloud.firestore {
       allow update: if resource.data.status == 'active'
         && request.resource.data.assignmentId == resource.data.assignmentId
         && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.teacherId is string
+        && (
+          request.resource.data.teacherId == resource.data.teacherId
+          || (
+            !(resource.data.teacherId is string)
+            && request.resource.data.teacherId == teacherIdForAssignment(resource.data.assignmentId)
+          )
+        )
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.content is string
         && request.resource.data.wordCount is number
