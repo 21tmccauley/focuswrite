@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Build
+dist
+dist-ssr
+*.local
+.firebase
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & secrets (never commit)
+.env
+.env.local
+.env.*.local
+*.pem
+firebase-debug*.log
+firebase-debug*.json
+*-debug.log
+serviceAccount*.json
+
+# OS
+.DS_Store
+Thumbs.db
