@@ -25,6 +25,11 @@ import { exportSessionAsTxt } from '@/utils/exportSession'
 
 const PREVIEW_LENGTH = 120
 
+function formatTimestamp(ts) {
+  if (!ts?.toDate) return '—'
+  return ts.toDate().toLocaleString()
+}
+
 export default function AssignmentSubmissions() {
   const { assignmentId } = useParams()
   const { user } = useAuth()
@@ -162,6 +167,7 @@ export default function AssignmentSubmissions() {
                 <TableHead>Words</TableHead>
                 <TableHead>Strikes</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Submitted at</TableHead>
                 <TableHead className="max-w-[280px]">Preview</TableHead>
                 <TableHead className="w-[140px]"></TableHead>
               </TableRow>
@@ -179,6 +185,7 @@ export default function AssignmentSubmissions() {
                     <TableCell>{session.wordCount ?? 0}</TableCell>
                     <TableCell>{session.strikeCount ?? 0}</TableCell>
                     <TableCell>{session.status === 'locked' ? 'Submitted' : 'Writing'}</TableCell>
+                    <TableCell>{session.status === 'locked' ? formatTimestamp(session.submittedAt) : '—'}</TableCell>
                     <TableCell className="max-w-[280px]">
                       <span className="line-clamp-2 text-muted-foreground text-sm">
                         {preview || '—'}
