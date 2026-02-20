@@ -464,7 +464,7 @@ function Write() {
 
       {/* Writing room */}
       {phase === 'writing' && (
-        <div className="space-y-4 text-left">
+        <div className="mx-auto max-w-5xl space-y-5 text-left">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -492,7 +492,7 @@ function Write() {
             </Card>
           )}
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <span className="text-sm">Words: {wordCount}</span>
             <span
               className={cn(
@@ -512,19 +512,23 @@ function Write() {
             </Alert>
           )}
 
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onPaste={(e) => e.preventDefault()}
-            onCopy={(e) => e.preventDefault()}
-            onCut={(e) => e.preventDefault()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => e.preventDefault()}
-            placeholder="Start writing here..."
-            rows={10}
-            className="max-w-[600px]"
-            disabled={!isFullscreenActive || fullscreenWarningOpen || status !== 'active'}
-          />
+          <Card className="bg-background">
+            <CardContent className="p-0">
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onCopy={(e) => e.preventDefault()}
+                onCut={(e) => e.preventDefault()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => e.preventDefault()}
+                placeholder="Start writing here..."
+                rows={22}
+                className="min-h-[68vh] resize-none rounded-xl border-0 bg-background px-8 py-7 !text-lg leading-8 shadow-none focus-visible:ring-0"
+                disabled={!isFullscreenActive || fullscreenWarningOpen || status !== 'active'}
+              />
+            </CardContent>
+          </Card>
           <Button
             type="button"
             onClick={() => setSubmitConfirmOpen(true)}
